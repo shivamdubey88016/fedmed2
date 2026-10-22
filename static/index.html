@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <title>FedEquiMed: Fairness-Aware Federated Learning in Healthcare</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand-section">
+      <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+        <h1 style="margin: 0;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="color:#0284c7; flex-shrink:0;">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+          <span>FedEquiMed</span>
+        </h1>
+        <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-weight: 700; font-size: 0.72rem;">
+          🎓 PhD Research Prototype
+        </span>
+      </div>
+      <div style="color: #0284c7; font-size: 0.9rem; font-weight: 600; margin-top: 0.2rem;">
+        Fairness-Aware Federated Learning in Healthcare
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 0.2rem; line-height: 1.35;">
+        Privacy-preserving collaborative medical AI with fairness-aware global model evaluation.
+      </p>
+    </div>
+    <div class="header-badges">
+      <span class="badge badge-privacy" title="Raw patient data never leaves participating healthcare nodes">
+        🔒 Patient Data Remains On-Premise
+      </span>
+      <button class="btn-download" id="btn-download-global-summary" title="Download Complete Results (JSON)">
+        📥 Export Results
+      </button>
+      <button class="btn-secondary" id="btn-toggle-admin">
+        🔐 Admin Controls
+      </button>
+    </div>
+  </header>
+
+  <!-- Admin Verification Banner (Hidden by default) -->
+  <div id="admin-active-bar" style="display: none; background: linear-gradient(90deg, #4c1d95, #6d28d9); color: #f5f3ff; padding: 0.6rem 1.25rem; font-size: 0.85rem; justify-content: space-between; align-items: center; border-bottom: 1px solid #7c3aed; flex-wrap: wrap; gap: 0.5rem;">
+    <span>🛡️ <strong>Admin Authority Verified:</strong> Authorized to configure network parameters, manage nodes, and reset runs.</span>
+    <button class="btn-secondary" onclick="exitAdminMode()" style="padding: 0.25rem 0.6rem; font-size: 0.75rem; background: rgba(0,0,0,0.3); min-height: 32px;">Exit Admin</button>
+  </div>
+
+  <!-- Federated Training Status Section -->
+  <section class="card" style="margin: 1.25rem 1.25rem 0 1.25rem; border-radius: 10px; background: #ffffff; border: 1px solid var(--border-color); padding: 1rem 1.25rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.8rem; font-weight: 700; color: #475569; letter-spacing: 0.05em; text-transform: uppercase;">
+          ⚡ Federated Training
+        </span>
+        <span class="badge" id="badge-fl-training-status" style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; font-size: 0.72rem;">
+          ● Completed
+        </span>
+      </div>
+      <div style="font-size: 0.76rem; color: var(--text-muted);">
+        Decentralized Parameter Orchestration (Round <span id="val-fl-round-header">0</span>)
+      </div>
+    </div>
+
+    <div class="fl-status-grid">
+      <div class="fl-status-card">
+        <div class="status-card-label">Clients</div>
+        <div class="status-card-val" id="fl-card-clients">4</div>
+        <div class="status-card-sub">Active Hospital Nodes</div>
+      </div>
+      <div class="fl-status-card">
+        <div class="status-card-label">Communication Rounds</div>
+        <div class="status-card-val" id="fl-card-rounds">10</div>
+        <div class="status-card-sub">FL Iterations</div>
+      </div>
+      <div class="fl-status-card">
+        <div class="status-card-label">Local Epochs</div>
+        <div class="status-card-val" id="fl-card-epochs">5</div>
+        <div class="status-card-sub">Per Round Optimization</div>
+      </div>
+      <div class="fl-status-card">
+        <div class="status-card-label">Aggregation</div>
+        <div class="status-card-val" id="fl-card-aggregation" style="font-size: 1.15rem; color: #0284c7;">FedAvg</div>
+        <div class="status-card-sub">Global Strategy</div>
+      </div>
+      <div class="fl-status-card">
+        <div class="status-card-label">Data Sharing</div>
+        <div class="status-card-val" style="font-size: 1.05rem; color: #059669;">Model Updates Only</div>
+        <div class="status-card-sub">0 Bytes Patient PHI</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Navigation Tabs -->
+  <nav class="tabs-nav">
+    <button class="tab-btn active" data-tab="tab-overview">
+      📊 Research Overview
+    </button>
+    <button class="tab-btn" data-tab="tab-hospitals">
+      🏥 Hospital Nodes
+    </button>
+    <button class="tab-btn" data-tab="tab-server">
+      🌐 Aggregation &amp; Charts
+    </button>
+    <button class="tab-btn" data-tab="tab-privacy">
+      🔒 Privacy &amp; DP
+    </button>
+    <button class="tab-btn" data-tab="tab-datasets">
+      📚 5 Benchmark Datasets
+    </button>
+    <button class="tab-btn" data-tab="tab-benchmark">
+      ⚖️ Multi-Seed Benchmark
+    </button>
+    <button class="tab-btn" data-tab="tab-ablation">
+      🔬 Ablation Study
+    </button>
+    <button class="tab-btn" data-tab="tab-history">
+      📁 Experiment History
+    </button>
+    <button class="tab-btn" data-tab="tab-admin" style="border: 1px solid rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.1);">
+      🔐 Admin Panel
+    </button>
+  </nav>
+
+  <!-- Main Content Areas -->
+  <main class="main-content">
+
+    <!-- Tab 0: Primary PhD Research Prototype Overview & Global Evaluation Flow -->
+    <div class="tab-pane active" id="tab-overview">
+
+      <!-- Section 3 & 4: Global Federated Model — MIMIC-IV Evaluation -->
+      <div class="card">
+        <div class="card-title">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span>Global Federated Model — MIMIC-IV Evaluation</span>
+            <span class="tooltip-trigger" style="font-size: 0.8rem; color: #0284c7;">
+              ℹ️
+              <span class="tooltip-box">Global metrics represent the aggregated federated model evaluated on the selected evaluation cohort. Local metrics represent the individual node's local model evaluation.</span>
+            </span>
+          </div>
+          <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;">
+            Aggregated Global Model (Round <span id="val-fl-round-eval">10</span>)
+          </span>
+        </div>
+
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.75rem;">
+          Empirical evaluation of the aggregated global parameters across the MIMIC-IV benchmark cohort (150 patients). Evaluates overall predictive diagnostic accuracy alongside multi-group demographic disparity.
+        </p>
+
+        <!-- 6 Metric Cards -->
+        <div class="fl-metric-grid">
+          <div class="fl-metric-card">
+            <div class="metric-title">Accuracy</div>
+            <div class="metric-value" id="global-metric-acc" style="color: #0284c7;">83.3%</div>
+            <div class="metric-sub">Overall Diagnostic Acc.</div>
+          </div>
+          <div class="fl-metric-card">
+            <div class="metric-title">Recall / Sensitivity</div>
+            <div class="metric-value" id="global-metric-recall" style="color: #059669;">95.0%</div>
+            <div class="metric-sub">True Positive Detection</div>
+          </div>
+          <div class="fl-metric-card">
+            <div class="metric-title">F1-Score</div>
+            <div class="metric-value" id="global-metric-f1" style="color: #7c3aed;">90.0%</div>
+            <div class="metric-sub">Harmonic Mean</div>
+          </div>
+          <div class="fl-metric-card">
+            <div class="metric-title">AUROC</div>
+            <div class="metric-value" id="global-metric-auroc" style="color: #0284c7;">84.8%</div>
+            <div class="metric-sub">Discrimination Capacity</div>
+          </div>
+          <div class="fl-metric-card">
+            <div class="metric-title">
+              <span>Gender ΔDP</span>
+              <span class="tooltip-trigger">
+                ℹ️
+                <span class="tooltip-box">Demographic Parity Difference: Absolute difference in positive risk prediction rates between female and male patients: |P(Y=1|Female) - P(Y=1|Male)|. Lower is fairer.</span>
+              </span>
+            </div>
+            <div class="metric-value highlight-green" id="global-metric-dpd">4.38%</div>
+            <div class="metric-sub">Demographic Parity Gap</div>
+          </div>
+          <div class="fl-metric-card">
+            <div class="metric-title">
+              <span>Equalized Odds ΔEO</span>
+              <span class="tooltip-trigger">
+                ℹ️
+                <span class="tooltip-box">Equalized Odds Difference: Average disparity in True Positive Rate (TPR) and False Positive Rate (FPR) across groups: 0.5 * (|TPR_F - TPR_M| + |FPR_F - FPR_M|).</span>
+              </span>
+            </div>
+            <div class="metric-value highlight-green" id="global-metric-eod">1.85%</div>
+            <div class="metric-sub">Avg. TPR/FPR Disparity</div>
+          </div>
+        </div>
+
+        <!-- Section 4: Fairness Status Badge & Configurable Threshold -->
+        <div class="fairness-status-box">
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <div id="fairness-status-badge" class="fairness-badge-met">
+              <span id="fairness-status-icon">✓</span>
+              <span id="fairness-status-text">Fairness Threshold Met</span>
+            </div>
+            <span style="font-size: 0.82rem; color: #475569;">
+              Gender ΔDP: <strong id="fairness-current-gap">4.38%</strong> &le; Threshold (<strong id="fairness-threshold-display">5.0%</strong>)
+            </span>
+            <span class="tooltip-trigger" style="font-size: 0.82rem; color: #64748b;">
+              ℹ️
+              <span class="tooltip-box">Threshold is a project-defined evaluation criterion and is not a universal definition of medical fairness.</span>
+            </span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <label for="input-fairness-threshold" style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Configurable Threshold:</label>
+            <input type="range" id="input-fairness-threshold" min="1.0" max="15.0" step="0.5" value="5.0" style="width: 110px;" />
+            <span id="label-fairness-threshold" style="font-size: 0.8rem; font-weight: 700; color: #0284c7; min-width: 38px;">5.0%</span>
+          </div>
+        </div>
+
+        <!-- Section 5: Global Model Subgroup Table -->
+        <div style="margin-top: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <span style="font-size: 0.9rem; font-weight: 700; color: #0f172a;">
+              Global Model Subgroup Performance
+            </span>
+            <span style="font-size: 0.74rem; color: var(--text-muted);">MIMIC-IV Evaluation Cohort</span>
+          </div>
+
+          <div class="table-responsive" style="margin-top: 0.25rem; margin-bottom: 0.4rem;">
+            <table class="data-table" id="table-global-subgroups">
+              <thead>
+                <tr>
+                  <th>Patient Subgroup</th>
+                  <th>Sample Count</th>
+                  <th>Accuracy</th>
+                  <th>Positive Risk Rate</th>
+                  <th>True Positive Rate (TPR)</th>
+                  <th>False Positive Rate (FPR)</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-global-subgroups">
+                <tr>
+                  <td><strong>Female Patients</strong></td>
+                  <td id="sg-female-count">72</td>
+                  <td id="sg-female-acc">84.7%</td>
+                  <td id="sg-female-pos">86.1%</td>
+                  <td id="sg-female-tpr">93.2%</td>
+                  <td id="sg-female-fpr">53.8%</td>
+                </tr>
+                <tr>
+                  <td><strong>Male Patients</strong></td>
+                  <td id="sg-male-count">78</td>
+                  <td id="sg-male-acc">82.1%</td>
+                  <td id="sg-male-pos">89.7%</td>
+                  <td id="sg-male-tpr">96.7%</td>
+                  <td id="sg-male-fpr">66.7%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="font-size: 0.73rem; color: var(--text-muted); font-style: italic;">
+            * Note: Metrics are computed on the evaluation cohort.
+          </div>
+        </div>
+
+        <!-- Section 6: Model Performance & Fairness Comparison Table -->
+        <div style="margin-top: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <span style="font-size: 0.9rem; font-weight: 700; color: #0f172a;">
+                Model Performance &amp; Fairness Comparison
+              </span>
+              <span class="tooltip-trigger" style="font-size: 0.78rem; color: #0284c7;">
+                ℹ️
+                <span class="tooltip-box">Global metrics represent the aggregated federated model evaluated on the selected evaluation cohort. Local metrics represent the individual node's local model evaluation.</span>
+              </span>
+            </div>
+            <span style="font-size: 0.74rem; color: var(--text-muted);">Pre-FL Local Baseline vs Post-FL Global Federated</span>
+          </div>
+
+          <div class="table-responsive" style="margin-top: 0.25rem;">
+            <table class="data-table" id="table-comparison">
+              <thead>
+                <tr>
+                  <th>Evaluation Metric</th>
+                  <th>Before / Local (Local Model Baseline)</th>
+                  <th>After / Global Federated</th>
+                  <th>Improvement / Delta</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-comparison">
+                <tr>
+                  <td><strong>Overall Classification Accuracy</strong></td>
+                  <td id="comp-acc-local">82.0%</td>
+                  <td id="comp-acc-global" style="font-weight: 700; color: #0284c7;">83.3%</td>
+                  <td id="comp-acc-delta" style="color: #059669; font-weight: 600;">+1.3%</td>
+                </tr>
+                <tr>
+                  <td><strong>Recall / Sensitivity</strong></td>
+                  <td id="comp-rec-local">93.3%</td>
+                  <td id="comp-rec-global" style="font-weight: 700; color: #0284c7;">95.0%</td>
+                  <td id="comp-rec-delta" style="color: #059669; font-weight: 600;">+1.7%</td>
+                </tr>
+                <tr>
+                  <td><strong>F1-Score</strong></td>
+                  <td id="comp-f1-local">89.0%</td>
+                  <td id="comp-f1-global" style="font-weight: 700; color: #0284c7;">90.0%</td>
+                  <td id="comp-f1-delta" style="color: #059669; font-weight: 600;">+1.0%</td>
+                </tr>
+                <tr>
+                  <td><strong>AUROC (Discrimination)</strong></td>
+                  <td id="comp-auroc-local">83.5%</td>
+                  <td id="comp-auroc-global" style="font-weight: 700; color: #0284c7;">84.8%</td>
+                  <td id="comp-auroc-delta" style="color: #059669; font-weight: 600;">+1.3%</td>
+                </tr>
+                <tr>
+                  <td><strong>Gender Demographic Parity (ΔDP)</strong></td>
+                  <td id="comp-dpd-local">5.88%</td>
+                  <td id="comp-dpd-global" style="font-weight: 700; color: #059669;">4.38%</td>
+                  <td id="comp-dpd-delta" style="color: #059669; font-weight: 600;">-1.50% (Fairer)</td>
+                </tr>
+                <tr>
+                  <td><strong>Equalized Odds Difference (ΔEO)</strong></td>
+                  <td id="comp-eod-local">8.71%</td>
+                  <td id="comp-eod-global" style="font-weight: 700; color: #059669;">1.85%</td>
+                  <td id="comp-eod-delta" style="color: #059669; font-weight: 600;">-6.86% (Equitable)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 7: Two Communication Round Charts -->
+      <div class="card">
+        <div class="card-title">
+          <span>Communication Round Trajectories (Federated Convergence)</span>
+          <span class="badge" style="background: #e0f2fe; color: #0369a1;">Real Historical Dynamics</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+          Visual tracking of predictive capability and equity gap reduction across federated parameter updates.
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <span style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Global Model Performance Across Communication Rounds</span>
+              <span style="font-size: 0.72rem; color: #0284c7; font-weight: 600;">Accuracy</span>
+            </div>
+            <div class="chart-container">
+              <canvas id="chart-overview-accuracy"></canvas>
+            </div>
+          </div>
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <span style="font-size: 0.85rem; font-weight: 700; color: #0f172a;">Fairness Gap Across Communication Rounds</span>
+              <div style="font-size: 0.72rem; display: flex; gap: 0.5rem;">
+                <span style="color: #0284c7; font-weight: 600;">● Gender ΔDP</span>
+                <span style="color: #7c3aed; font-weight: 600;">● Equalized Odds ΔEO</span>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="chart-overview-fairness"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 8: Federated Learning Workflow Diagram -->
+      <div class="card">
+        <div class="card-title">
+          <span>Federated Learning Privacy &amp; Training Workflow</span>
+          <span class="badge badge-privacy">Data Decentralization</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.85rem;">
+          Architectural pipeline ensuring collaborative clinical intelligence without cross-institutional data consolidation:
+        </p>
+        
+        <div class="fl-workflow-container">
+          <div class="fl-workflow-node">
+            <div style="font-size: 1.25rem; margin-bottom: 0.25rem;">🏥</div>
+            <strong style="color: #0369a1; font-size: 0.82rem; display: block;">Participating Nodes</strong>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">Hosp A, B, C &amp; MIMIC Node</div>
+          </div>
+          <div class="fl-workflow-arrow">&rarr;</div>
+          <div class="fl-workflow-node">
+            <div style="font-size: 1.25rem; margin-bottom: 0.25rem;">⚙️</div>
+            <strong style="color: #0369a1; font-size: 0.82rem; display: block;">Local Training</strong>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">5 On-Premise Epochs</div>
+          </div>
+          <div class="fl-workflow-arrow">&rarr;</div>
+          <div class="fl-workflow-node">
+            <div style="font-size: 1.25rem; margin-bottom: 0.25rem;">📡</div>
+            <strong style="color: #0369a1; font-size: 0.82rem; display: block;">Model Updates</strong>
+            <div style="font-size: 0.7rem; color: #059669; font-weight: 600; margin-top: 0.2rem;">Weights Only (0 PHI)</div>
+          </div>
+          <div class="fl-workflow-arrow">&rarr;</div>
+          <div class="fl-workflow-node">
+            <div style="font-size: 1.25rem; margin-bottom: 0.25rem;">🌐</div>
+            <strong style="color: #0369a1; font-size: 0.82rem; display: block;">Central Server</strong>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">FairFed / D-TAMA Aggregation</div>
+          </div>
+          <div class="fl-workflow-arrow">&rarr;</div>
+          <div class="fl-workflow-node">
+            <div style="font-size: 1.25rem; margin-bottom: 0.25rem;">🔄</div>
+            <strong style="color: #0369a1; font-size: 0.82rem; display: block;">Global Model</strong>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">Consensus Parameters</div>
+          </div>
+          <div class="fl-workflow-arrow">&rarr;</div>
+          <div class="fl-workflow-node">
+            <div style="font-size: 1.25rem; margin-bottom: 0.25rem;">⚖️</div>
+            <strong style="color: #0369a1; font-size: 0.82rem; display: block;">Fairness Audit</strong>
+            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">MIMIC-IV Evaluation</div>
+          </div>
+        </div>
+
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 0.75rem 1rem; margin-top: 0.85rem; display: flex; align-items: center; gap: 0.6rem;">
+          <span style="font-size: 1.1rem;">🔒</span>
+          <span style="font-size: 0.82rem; font-weight: 600; color: #1e40af;">
+            Raw patient data does not leave the participating hospital.
+          </span>
+        </div>
+      </div>
+
+      <!-- Section 9 & 10: Active Hospital Nodes -->
+      <div class="card">
+        <div class="card-title">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span>Active Hospital Nodes &amp; Local On-Premise Silos</span>
+            <span class="tooltip-trigger" style="font-size: 0.78rem; color: #0284c7;">
+              ℹ️
+              <span class="tooltip-box">Global metrics represent the aggregated federated model evaluated on the selected evaluation cohort. Local metrics represent the individual node's local model evaluation.</span>
+            </span>
+          </div>
+          <span class="badge badge-privacy">Decentralized Clients</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+          Individual hospital nodes maintain private patient registries. Each node optimizes a local model on-premise and communicates parameter updates to the central aggregator.
+        </p>
+
+        <div class="hospitals-grid" id="hospitals-overview-container">
+          <!-- Rendered dynamically via JavaScript into 4-column responsive grid -->
+        </div>
+      </div>
+
+      <!-- Section 11 & 12: MIMIC-IV Dataset Information & Privacy Architecture -->
+      <div class="two-panel-grid">
+        <!-- Section 11: MIMIC-IV Dataset Information -->
+        <div class="card" style="margin-bottom: 0;">
+          <div class="card-title" style="font-size: 0.95rem;">
+            <span>MIMIC-IV Dataset Information</span>
+            <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;">PhysioNet</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+            Clinical profile of the primary benchmark repository used for rigorous multi-center fairness audit:
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.82rem;">
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.6rem 0.75rem; display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted); font-weight: 600;">Dataset:</span>
+              <strong>MIMIC-IV (v2.2)</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.6rem 0.75rem; display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted); font-weight: 600;">Data Source:</span>
+              <span>PhysioNet / Beth Israel Deaconess Medical Center</span>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.6rem 0.75rem; display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted); font-weight: 600;">Evaluation Cohort:</span>
+              <strong style="color: #0284c7;">150 Patients (MIMIC-IV-derived evaluation sample)</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.6rem 0.75rem; display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted); font-weight: 600;">Protected Attribute:</span>
+              <strong>Gender (Female / Male)</strong>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.6rem 0.75rem; display: flex; justify-content: space-between;">
+              <span style="color: var(--text-muted); font-weight: 600;">Clinical Prediction Task:</span>
+              <span style="color: #0f172a; font-weight: 600;">30-Day Adverse Clinical Event &amp; Mortality Risk</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 12: Privacy Architecture Indicator -->
+        <div class="card" style="margin-bottom: 0;">
+          <div class="card-title" style="font-size: 0.95rem;">
+            <span>Privacy Architecture &amp; Governance</span>
+            <span class="badge badge-privacy">Zero-PHI Transfer</span>
+          </div>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+            Formal privacy mechanisms governing all decentralized computation within the FedEquiMed framework:
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.82rem;">
+            <div style="display: flex; align-items: flex-start; gap: 0.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.6rem 0.75rem;">
+              <span style="color: #059669; font-weight: 700;">✓</span>
+              <div><strong>Patient EHR &amp; PHI Stays Local:</strong> Medical records never leave the healthcare institution's secure private cloud.</div>
+            </div>
+            <div style="display: flex; align-items: flex-start; gap: 0.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.6rem 0.75rem;">
+              <span style="color: #059669; font-weight: 700;">✓</span>
+              <div><strong>On-Premise Model Training:</strong> Local backpropagation and loss calculation take place solely within the hospital perimeter.</div>
+            </div>
+            <div style="display: flex; align-items: flex-start; gap: 0.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.6rem 0.75rem;">
+              <span style="color: #059669; font-weight: 700;">✓</span>
+              <div><strong>Parameter-Only Communication:</strong> Only mathematical weight tensors and gradient scalars are transmitted to the server.</div>
+            </div>
+            <div style="display: flex; align-items: flex-start; gap: 0.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.6rem 0.75rem;">
+              <span style="color: #059669; font-weight: 700;">✓</span>
+              <div><strong>Demographic Equity Aggregation:</strong> Dynamic weights allocate parameter influence to mitigate subgroup performance disparities.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 13: Collapsible "Research Details" Section -->
+      <details class="research-details">
+        <summary>
+          <span>🔬 PhD Research Details &amp; Mathematical Specifications</span>
+        </summary>
+        <div class="research-specs-grid">
+          <div class="research-spec-item">
+            <div class="research-spec-label">Federated Learning Method</div>
+            <div class="research-spec-val">FedEquiMed (ClinDisentangleNet + CARP-Loss + D-TAMA)</div>
+          </div>
+          <div class="research-spec-item">
+            <div class="research-spec-label">Active Clients</div>
+            <div class="research-spec-val" id="spec-clients-val">4 Participating Hospital Silos</div>
+          </div>
+          <div class="research-spec-item">
+            <div class="research-spec-label">Communication Rounds</div>
+            <div class="research-spec-val" id="spec-rounds-val">10 Rounds (Decentralized Orchestration)</div>
+          </div>
+          <div class="research-spec-item">
+            <div class="research-spec-label">Local Epochs</div>
+            <div class="research-spec-val">5 Optimization Epochs per Round</div>
+          </div>
+          <div class="research-spec-item">
+            <div class="research-spec-label">Protected Demographic Attribute</div>
+            <div class="research-spec-val">Gender (Binary: Female vs Male)</div>
+          </div>
+          <div class="research-spec-item">
+            <div class="research-spec-label">Fairness Objectives</div>
+            <div class="research-spec-val">ΔDP = |P(Ŷ=1|F) - P(Ŷ=1|M)|, ΔEO = 0.5*(|ΔTPR| + |ΔFPR|)</div>
+          </div>
+          <div class="research-spec-item">
+            <div class="research-spec-label">Clinical Performance Metrics</div>
+            <div class="research-spec-val">Classification Accuracy, Sensitivity/Recall, F1-Score, AUROC</div>
+          </div>
+          <div class="research-spec-item">
+            <div class="research-spec-label">Evaluation Cohort</div>
+            <div class="research-spec-val">MIMIC-IV ICU EHR Benchmark Sample (150 Patient Records)</div>
+          </div>
+        </div>
+      </details>
+
+    </div>
+
+    <!-- Tab 1: Benchmark Healthcare Datasets (Top 5 Medical Repositories) -->
+    <div class="tab-pane" id="tab-datasets">
+      <div class="card">
+        <div class="card-title">
+          <span>Benchmark Healthcare Datasets (Top 5 Medical Repositories)</span>
+          <span class="badge badge-privacy">Standard Research Benchmarks</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.25rem;">
+          Select from the top 5 medical research databases to inspect data profiles, download sample cohorts, evaluate global model fairness, or enroll them directly into the federated network as live hospital client nodes.
+        </p>
+
+        <!-- Benchmark Selection & Quick Actions -->
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            <div>
+              <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem; font-weight: 600;">Select Benchmark Dataset:</label>
+              <select id="select-benchmark-preset" style="width: 100%; padding: 0.5rem; border-radius: 6px; font-size: 0.88rem;">
+                <option value="mimic_iv" selected>🏥 1. MIMIC-IV (PhysioNet) — ICU EHR (~380k patients)</option>
+                <option value="eicu">🏥 2. eICU Research DB — Multi-center (~200k stays)</option>
+                <option value="medmnist">🖼️ 3. MedMNIST — Medical Imaging (700k+)</option>
+                <option value="covid19_imaging">🫁 4. COVID-19 Imaging — X-rays/CT (~50k+)</option>
+                <option value="tcga">🧬 5. TCGA — Cancer Genomics (~11k patients)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.35rem; font-weight: 600;">Cohort Sample Size:</label>
+              <select id="select-benchmark-count" style="width: 100%; padding: 0.5rem; border-radius: 6px; font-size: 0.88rem;">
+                <option value="50">50 Patient Records (Quick Evaluation)</option>
+                <option value="150" selected>150 Patient Records (Standard Cohort)</option>
+                <option value="300">300 Patient Records (Extended Evaluation)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dataset Detail Banner -->
+          <div id="benchmark-desc-box" style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.85rem; margin-bottom: 1rem; font-size: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap; gap: 0.5rem;">
+              <strong id="benchmark-detail-title" style="color: var(--teal-secondary); font-size: 0.95rem;">MIMIC-IV (PhysioNet)</strong>
+              <a id="benchmark-detail-url" href="https://physionet.org/content/mimiciv" target="_blank" rel="noreferrer" style="color: #0284c7; text-decoration: underline; font-size: 0.78rem; font-weight: 600;">🔗 Official Repository</a>
+            </div>
+            <p id="benchmark-detail-desc" style="color: var(--text-muted); margin: 0 0 0.5rem 0;">
+              Critical care ICU database with high-acuity lab measurements, vital signs, and mortality outcomes from Beth Israel Deaconess Medical Center.
+            </p>
+            <div style="font-size: 0.8rem; color: #e11d48; font-weight: 500;" id="benchmark-detail-bias">
+              ⚠️ Demographic Gap: Historically lower representation of minority demographics and elderly females requiring fairness adjustment.
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; align-items: center;">
+            <button class="btn-primary" id="btn-load-selected-benchmark">
+              ➕ Enroll Selected Benchmark as Hospital Node
+            </button>
+            <button class="btn-primary" id="btn-test-selected-benchmark" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+              🧪 Test Results on Selected Benchmark
+            </button>
+            <button class="btn-secondary" id="btn-download-selected-benchmark">
+              💾 Download Benchmark CSV File
+            </button>
+          </div>
+          <div id="benchmark-action-msg" style="display: none; margin-top: 0.75rem; font-size: 0.85rem;"></div>
+        </div>
+
+        <!-- Benchmark Test Results Card (Populated when tested) -->
+        <div id="benchmark-test-results-container" style="display: none; margin-bottom: 1.25rem;"></div>
+
+        <!-- Benchmark Datasets Specifications Table -->
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <span style="font-size: 0.9rem; font-weight: 700; color: #0f172a;">
+              📋 Benchmark Dataset Specifications Matrix (5 Standard Repositories)
+            </span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Standardized Medical Formats</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" style="font-size: 0.82rem; margin: 0;">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Dataset</th>
+                  <th>Data Type</th>
+                  <th>Records</th>
+                  <th>Official Repository</th>
+                  <th>Direct Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td><strong>MIMIC-IV (PhysioNet)</strong></td>
+                  <td>ICU Electronic Health Records (EHR)</td>
+                  <td>~380,000 patients</td>
+                  <td><a href="https://physionet.org/content/mimiciv" target="_blank" rel="noreferrer" style="color: #0284c7;">physionet.org/content/mimiciv</a></td>
+                  <td style="white-space: nowrap;">
+                    <button class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; margin-right: 0.3rem;" onclick="enrollBenchmarkAsHospital('mimic_iv', 150)">➕ Enroll Node</button>
+                    <button class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-right: 0.3rem;" onclick="runQuickBenchmarkTest('mimic_iv', 150)">🧪 Test Results</button>
+                    <a href="/api/sample_dataset?benchmark=mimic_iv&count=100&format=csv" download="mimic_iv_cohort.csv" class="badge" style="background:#0284c7; color:white; text-decoration:none; padding: 0.35rem 0.6rem;">CSV</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td><strong>eICU Research Database</strong></td>
+                  <td>Multi-center ICU data (EHR)</td>
+                  <td>~200,000 stays</td>
+                  <td><a href="https://physionet.org/content/eicu-crd" target="_blank" rel="noreferrer" style="color: #0284c7;">physionet.org/content/eicu-crd</a></td>
+                  <td style="white-space: nowrap;">
+                    <button class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; margin-right: 0.3rem;" onclick="enrollBenchmarkAsHospital('eicu', 150)">➕ Enroll Node</button>
+                    <button class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-right: 0.3rem;" onclick="runQuickBenchmarkTest('eicu', 150)">🧪 Test Results</button>
+                    <a href="/api/sample_dataset?benchmark=eicu&count=100&format=csv" download="eicu_cohort.csv" class="badge" style="background:#0284c7; color:white; text-decoration:none; padding: 0.35rem 0.6rem;">CSV</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td><strong>MedMNIST</strong></td>
+                  <td>Medical Imaging Benchmark</td>
+                  <td>Over 700,000 images</td>
+                  <td><a href="https://medmnist.com/" target="_blank" rel="noreferrer" style="color: #0284c7;">medmnist.com</a></td>
+                  <td style="white-space: nowrap;">
+                    <button class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; margin-right: 0.3rem;" onclick="enrollBenchmarkAsHospital('medmnist', 150)">➕ Enroll Node</button>
+                    <button class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-right: 0.3rem;" onclick="runQuickBenchmarkTest('medmnist', 150)">🧪 Test Results</button>
+                    <a href="/api/sample_dataset?benchmark=medmnist&count=100&format=csv" download="medmnist_cohort.csv" class="badge" style="background:#0284c7; color:white; text-decoration:none; padding: 0.35rem 0.6rem;">CSV</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td><strong>COVID-19 Imaging Datasets</strong></td>
+                  <td>Chest X-rays &amp; CT scans</td>
+                  <td>~50,000+ images</td>
+                  <td><a href="https://www.kaggle.com/andrewmvd/covid19-x-ray-dataset" target="_blank" rel="noreferrer" style="color: #0284c7;">kaggle.com/.../covid19</a></td>
+                  <td style="white-space: nowrap;">
+                    <button class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; margin-right: 0.3rem;" onclick="enrollBenchmarkAsHospital('covid19_imaging', 150)">➕ Enroll Node</button>
+                    <button class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-right: 0.3rem;" onclick="runQuickBenchmarkTest('covid19_imaging', 150)">🧪 Test Results</button>
+                    <a href="/api/sample_dataset?benchmark=covid19_imaging&count=100&format=csv" download="covid19_imaging_cohort.csv" class="badge" style="background:#0284c7; color:white; text-decoration:none; padding: 0.35rem 0.6rem;">CSV</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td><strong>TCGA (Cancer Genome Atlas)</strong></td>
+                  <td>Genomics (DNA / RNA)</td>
+                  <td>Over 11,000 patients</td>
+                  <td><a href="https://www.cancer.gov/ccg/research/genome-sequencing/tcga" target="_blank" rel="noreferrer" style="color: #0284c7;">cancer.gov/.../tcga</a></td>
+                  <td style="white-space: nowrap;">
+                    <button class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; margin-right: 0.3rem;" onclick="enrollBenchmarkAsHospital('tcga', 150)">➕ Enroll Node</button>
+                    <button class="btn-primary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); margin-right: 0.3rem;" onclick="runQuickBenchmarkTest('tcga', 150)">🧪 Test Results</button>
+                    <a href="/api/sample_dataset?benchmark=tcga&count=100&format=csv" download="tcga_cohort.csv" class="badge" style="background:#0284c7; color:white; text-decoration:none; padding: 0.35rem 0.6rem;">CSV</a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tab 1: Hospital Nodes & Local Training -->
+    <div class="tab-pane" id="tab-hospitals">
+
+      <!-- Hospital Enrollment & Instant Evaluation Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>Hospital Onboarding &amp; Global Model Evaluation Portal</span>
+          <span class="badge badge-privacy">Client Node Onboarding</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+          Any healthcare center can join the network. Upload an EHR dataset (.CSV) or use a simulated profile to evaluate global predictive accuracy and demographic fairness on that hospital's patient cohort.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.85rem; margin-bottom: 1rem;">
+          <div>
+            <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Hospital / Clinic Name</label>
+            <input type="text" id="new-hospital-name" placeholder="e.g. St. Jude Regional Hospital" style="width: 100%; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem;" />
+          </div>
+          <div>
+            <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Institution Profile / Clinical Focus</label>
+            <input type="text" id="new-hospital-desc" placeholder="e.g. Critical care &amp; cardiology center" style="width: 100%; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem;" />
+          </div>
+          <div>
+            <label style="font-size: 0.78rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Patient Dataset (.CSV for testing or enrollment)</label>
+            <input type="file" id="new-hospital-csv" accept=".csv" style="width: 100%; padding: 0.4rem; border-radius: 6px; font-size: 0.8rem; background: #ffffff; border: 1px solid #cbd5e1; color: #0f172a;" />
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.65rem; flex-wrap: wrap; align-items: center;">
+          <button class="btn-primary" id="btn-test-hospital-model" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            🧪 Test Global Model on Uploaded Data
+          </button>
+          <button class="btn-primary" id="btn-enroll-hospital">
+            ➕ Enroll Hospital Node
+          </button>
+          <button class="btn-secondary" id="btn-fill-sample-hospital">
+            ⚡ Auto-Fill Example Clinic
+          </button>
+        </div>
+
+        <!-- Onboarding Status Feedback Message -->
+        <div id="enroll-status-msg" style="display: none; margin-top: 0.75rem; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem;"></div>
+
+        <!-- Evaluation Results Container -->
+        <div id="test-results-container" style="display: none; margin-top: 1.25rem; background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);"></div>
+      </div>
+
+      <!-- Enrolled Hospitals Grid -->
+      <div class="card-title" style="margin-top: 1.5rem;">
+        <span>Active Hospital Nodes &amp; Local On-Premise Silos</span>
+      </div>
+      <div class="hospitals-grid" id="hospitals-container">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <!-- Tab 2: Global Server, FairFed, D-TAMA & Training Trajectories -->
+    <div class="tab-pane" id="tab-server">
+      <div class="card">
+        <div class="card-title">
+          <span>Central Federated Aggregator Console</span>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <a href="/api/download_history?format=json" class="btn-download" id="btn-download-server-results" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" title="Export Round History (JSON)">
+              📥 Download History
+            </a>
+            <a href="/api/download_history?format=csv" class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" title="Export Round History (CSV)">
+              📄 Export CSV
+            </a>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+          <div style="background: #f8fafc; padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
+            <h4 style="margin-bottom: 0.75rem; color: var(--teal-secondary);">Round Parameters</h4>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <div>
+                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Federated Algorithm</label>
+                <select id="select-strategy" style="width: 100%; padding: 0.5rem; border-radius: 6px;">
+                  <option value="fedequimed" selected>🌟 FedEquiMed (ClinDisentangleNet + CARP + D-TAMA)</option>
+                  <option value="fairfed">FairFed (Disparity-Aware Aggregation)</option>
+                  <option value="fedavg">Standard FedAvg (Volume Baseline)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Fairness Penalty (Beta: <span id="val-beta">2.5</span>)</label>
+                <input type="range" id="input-beta" min="0.5" max="5.0" step="0.5" value="2.5" style="width: 100%;" oninput="document.getElementById('val-beta').innerText = this.value" />
+              </div>
+
+              <div>
+                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Local Training Epochs</label>
+                <input type="number" id="input-global-epochs" min="1" max="15" value="4" style="width: 100%; padding: 0.4rem; border-radius: 6px;" />
+              </div>
+
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem; flex-wrap: wrap;">
+                <button class="btn-primary" id="btn-run-round" style="flex: 1;">
+                  ▶ Run 1 Round
+                </button>
+                <button class="btn-secondary" id="btn-run-3rounds" style="flex: 1;">
+                  ⏩ Train 3 Rounds
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style="background: #f8fafc; padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color);">
+            <h4 style="margin-bottom: 0.75rem; color: var(--teal-secondary);">Client Weighting Allocation</h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+              FairFed and D-TAMA dynamically adjust client aggregation weights $w_k$ to mitigate persistent subgroup disparities:
+            </p>
+            <div id="agg-weights-display" style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Trajectory Charts -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-title" style="font-size: 0.95rem;">Global Clinical Accuracy Trajectory</div>
+            <div class="chart-container">
+              <canvas id="chart-accuracy"></canvas>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom: 0;">
+            <div class="card-title" style="font-size: 0.95rem;">Demographic Parity Difference (ΔDP) Trajectory</div>
+            <div class="chart-container">
+              <canvas id="chart-fairness"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Privacy & Differential Privacy (DP-SGD & Formal Accounting) -->
+    <div class="tab-pane" id="tab-privacy">
+      <div class="card">
+        <div class="card-title">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span>Privacy Architecture &amp; Differential Privacy (DP-SGD)</span>
+            <span class="tooltip-trigger" style="font-size: 0.8rem; color: #0284c7;">
+              ℹ️
+              <span class="tooltip-box">Differential Privacy provides mathematical bounds limiting how much individual patient records can influence communicated model parameters, mitigating gradient inversion and membership inference risks.</span>
+            </span>
+          </div>
+          <span class="badge badge-privacy">Rényi DP Certified</span>
+        </div>
+
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.25rem;">
+          FedEquiMed enforces rigorous data confidentiality by pairing decentralized on-premise training with client-side gradient $L_2$-norm clipping and calibrated Gaussian perturbation (DP-SGD) under formal Rényi Differential Privacy (RDP) accounting.
+        </p>
+
+        <!-- Live DP Accountant Summary Cards -->
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <span style="font-size: 0.9rem; font-weight: 700; color: #0f172a;">
+              📊 Live Analytical Privacy Accountant (RDP)
+            </span>
+            <button class="btn-secondary" onclick="loadPrivacyConfig()" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;">
+              🔄 Refresh Budget
+            </button>
+          </div>
+          <div id="privacy-accountant-summary">
+            <!-- Rendered dynamically by loadPrivacyConfig() -->
+          </div>
+        </div>
+
+        <!-- Interactive DP Parameter Configuration Controls -->
+        <div style="background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;">
+          <h4 style="color: var(--teal-secondary); font-size: 0.95rem; margin-bottom: 0.5rem; font-weight: 700;">
+            ⚙️ Tune Differential Privacy Parameters
+          </h4>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Adjust local clipping boundaries and Gaussian perturbation scales. Parameters are enforced on local client model updates before server transmission:
+          </p>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 1rem;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: #334155;">Gaussian Noise Multiplier (&sigma;):</label>
+                <span id="val-dp-noise" style="font-size: 0.85rem; font-weight: 700; color: #7c3aed;">0.05</span>
+              </div>
+              <input type="range" id="input-dp-noise" min="0.0" max="2.0" step="0.05" value="0.05" style="width: 100%;" oninput="document.getElementById('val-dp-noise').innerText = this.value" />
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+                Higher &sigma; provides stronger privacy (&epsilon; decreases), but introduces gradient variance.
+              </div>
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <label style="font-size: 0.8rem; font-weight: 600; color: #334155;">Max L2 Gradient Clipping Norm (C):</label>
+                <span id="val-dp-clip" style="font-size: 0.85rem; font-weight: 700; color: #0284c7;">1.0</span>
+              </div>
+              <input type="range" id="input-dp-clip" min="0.1" max="5.0" step="0.1" value="1.0" style="width: 100%;" oninput="document.getElementById('val-dp-clip').innerText = this.value" />
+              <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+                Bounds maximum sensitivity &Delta;S = C across any single patient's clinical records.
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <button class="btn-primary" id="btn-update-privacy" style="background: linear-gradient(135deg, #0284c7, #0369a1);">
+              💾 Update &amp; Recalculate DP Budget
+            </button>
+            <span id="privacy-update-status" style="font-size: 0.82rem; color: #059669; font-weight: 600; display: none;"></span>
+          </div>
+        </div>
+
+        <!-- Privacy Architecture & Multi-Layer Governance Matrix -->
+        <div style="background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem;">
+          <h4 style="color: #0f172a; font-size: 0.95rem; margin-bottom: 0.75rem; font-weight: 700;">
+            🛡️ 4-Tier Healthcare Privacy &amp; Governance Matrix
+          </h4>
+
+          <div class="table-responsive" style="margin: 0;">
+            <table class="data-table" style="font-size: 0.82rem;">
+              <thead>
+                <tr>
+                  <th>Layer</th>
+                  <th>Mechanism</th>
+                  <th>Protection Objective</th>
+                  <th>Regulatory Alignment</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>1. Institutional Perimeter</strong></td>
+                  <td>On-Premise Private Silos</td>
+                  <td>Raw EHR microdata never leaves hospital firewall</td>
+                  <td><span class="badge badge-privacy">HIPAA / GDPR Compliant</span></td>
+                </tr>
+                <tr>
+                  <td><strong>2. Network Transport</strong></td>
+                  <td>Encrypted Weight Broadcast</td>
+                  <td>Zero transmission of clinical features or patient identifiers</td>
+                  <td><span class="badge badge-privacy">End-to-End TLS</span></td>
+                </tr>
+                <tr>
+                  <td><strong>3. Client Algorithmic DP</strong></td>
+                  <td>L2 Gradient Clipping ($C \le 1.0$) + Gaussian Noise</td>
+                  <td>Prevents membership inference and gradient inversion attacks</td>
+                  <td><span class="badge" style="background:#e0f2fe; color:#0369a1; border: 1px solid #bae6fd;">Rényi DP (RDP)</span></td>
+                </tr>
+                <tr>
+                  <td><strong>4. Aggregation Boundary</strong></td>
+                  <td>Demographic Equity Weighting (D-TAMA)</td>
+                  <td>Federated averaging prevents node reconstruction</td>
+                  <td><span class="badge" style="background:#ecfdf5; color:#059669; border: 1px solid #a7f3d0;">Provable Consensus</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Tab 3: Multi-Seed Benchmark & Accuracy-Fairness Pareto Trade-off -->
+    <div class="tab-pane" id="tab-benchmark">
+      <div class="card">
+        <div class="card-title">
+          <span>Comparative Benchmark (FedAvg vs FairFed vs FedEquiMed)</span>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <button class="btn-primary" id="btn-run-benchmark">
+              ⚡ Run 5-Round Benchmark
+            </button>
+            <button class="btn-secondary" id="btn-run-multiseed" style="border-color: #8b5cf6;">
+              🎲 Run Multi-Seed Evaluation (5 Seeds)
+            </button>
+          </div>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.25rem;">
+          Direct empirical validation across identical test partitions, initial weights, and communication rounds. All metrics are calculated dynamically from actual model inferences without fabricated values.
+        </p>
+
+        <!-- Status message -->
+        <div id="benchmark-status" style="font-size: 0.85rem; color: #38bdf8; margin-bottom: 0.75rem; display: none;"></div>
+
+        <!-- Comparison Cards -->
+        <div class="benchmark-grid" id="benchmark-results-container" style="display: none;">
+          <!-- FedAvg Baseline -->
+          <div class="benchmark-card standard">
+            <h3 style="color: #e11d48; font-size: 1.05rem; margin-bottom: 0.35rem; font-weight: 700;">FedAvg (Baseline)</h3>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.85rem;">Standard sample volume aggregation.</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Accuracy</div>
+                <div class="highlight-metric" id="bm-fedavg-acc">--</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Gender ΔDP</div>
+                <div class="highlight-metric highlight-red" id="bm-fedavg-dpd">--</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Equalized Odds ΔEO</div>
+                <div class="highlight-metric highlight-red" id="bm-fedavg-eod">--</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Disparate Impact (DIR)</div>
+                <div class="highlight-metric" id="bm-fedavg-dir">--</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- FairFed -->
+          <div class="benchmark-card fairfl">
+            <h3 style="color: #0284c7; font-size: 1.05rem; margin-bottom: 0.35rem; font-weight: 700;">FairFed</h3>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.85rem;">Disparity-penalized dynamic aggregation.</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Accuracy</div>
+                <div class="highlight-metric" id="bm-fairfl-acc">--</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Gender ΔDP</div>
+                <div class="highlight-metric highlight-green" id="bm-fairfl-dpd" style="color: #0284c7;">--</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Equalized Odds ΔEO</div>
+                <div class="highlight-metric highlight-green" id="bm-fairfl-eod" style="color: #0284c7;">--</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Disparity Reduction</div>
+                <div class="highlight-metric highlight-green" id="bm-fairfl-reduction" style="color: #0284c7;">--</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Proposed FedEquiMed -->
+          <div class="benchmark-card fedequimed">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+              <h3 style="color: #059669; font-size: 1.05rem; margin: 0; font-weight: 700;">🌟 FedEquiMed</h3>
+              <span class="badge badge-privacy" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;">Covariate-Adjusted Equity</span>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.85rem;">ClinDisentangleNet + CARP + D-TAMA.</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Accuracy</div>
+                <div class="highlight-metric" id="bm-fedequimed-acc" style="color: #059669;">--</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Gender ΔDP</div>
+                <div class="highlight-metric highlight-green" id="bm-fedequimed-dpd">--</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Disparate Impact (DIR)</div>
+                <div class="highlight-metric highlight-green" id="bm-fedequimed-dir">--</div>
+              </div>
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.65rem; border-radius: 6px;">
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Disparity Reduction</div>
+                <div class="highlight-metric highlight-green" id="bm-reduction-pct">--</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Disparity Convergence Chart -->
+        <div id="benchmark-chart-box" style="margin-top: 1.5rem; display: none;">
+          <div class="card-title" style="font-size: 0.95rem;">Demographic Disparity Convergence Over Benchmark Rounds</div>
+          <div class="chart-container">
+            <canvas id="chart-benchmark"></canvas>
+          </div>
+        </div>
+
+        <!-- Pareto Accuracy vs Fairness Trade-off Visualization -->
+        <div id="pareto-chart-box" style="margin-top: 1.5rem; display: none;">
+          <div class="card-title" style="font-size: 0.95rem;">Accuracy vs Fairness Trade-off (Pareto Evaluation)</div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            Horizontal axis: Overall Accuracy. Vertical axis: Demographic Parity Difference (ΔDP, lower is fairer).
+          </p>
+          <div class="chart-container">
+            <canvas id="chart-pareto"></canvas>
+          </div>
+        </div>
+
+        <!-- Multi-Seed Statistical Summary Table -->
+        <div id="multiseed-results-box" style="margin-top: 1.5rem; display: none;">
+          <h4 style="color: var(--teal-primary); margin-bottom: 0.5rem;">Multi-Seed Statistical Robustness Summary (Mean ± Std Dev)</h4>
+          <div class="table-responsive">
+            <table class="data-table" id="table-multiseed">
+              <thead>
+                <tr>
+                  <th>Method</th>
+                  <th>Accuracy</th>
+                  <th>F1 Score</th>
+                  <th>AUROC</th>
+                  <th>Demographic Parity (ΔDP)</th>
+                  <th>Equalized Odds (ΔEO)</th>
+                  <th>Disparate Impact (DIR)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Component Ablation Study -->
+    <div class="tab-pane" id="tab-ablation">
+      <div class="card">
+        <div class="card-title">
+          <span>Component Ablation Study: What Does Each Proposed Module Contribute?</span>
+          <button class="btn-primary" id="btn-run-ablation" style="background: linear-gradient(135deg, #7c3aed, #a855f7);">
+            🔬 Run 5-Component Ablation Study
+          </button>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.25rem;">
+          Rigorous component-wise ablation under identical multi-center non-IID conditions:
+          (A) FedAvg, (B) +ClinDisentangleNet, (C) +CARP-Loss, (D) +D-TAMA, (E) Full FedEquiMed.
+        </p>
+
+        <div id="ablation-status" style="font-size: 0.85rem; color: #a78bfa; margin-bottom: 0.75rem; display: none;"></div>
+
+        <div class="table-responsive">
+          <table class="data-table" id="table-ablation">
+            <thead>
+              <tr>
+                <th>Component Configuration</th>
+                <th>Accuracy</th>
+                <th>Precision</th>
+                <th>Recall</th>
+                <th>F1-Score</th>
+                <th>AUROC</th>
+                <th>Gender ΔDP</th>
+                <th>Gender ΔEO</th>
+                <th>DIR</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-ablation">
+              <tr>
+                <td colspan="9" style="text-align:center; color:#94a3b8; padding: 1.5rem;">
+                  Ablation study not yet executed. Click "Run 5-Component Ablation Study" above to execute.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Tab 6: Experiment History & Persisted Artifacts -->
+    <div class="tab-pane" id="tab-history">
+      <div class="card">
+        <div class="card-title">
+          <span>Experiment History &amp; Persistent Artifacts</span>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <a href="/api/download_experiments?format=json" class="btn-download" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" title="Download Experiment History (JSON)">
+              📥 Download History (JSON)
+            </a>
+            <a href="/api/download_experiments?format=csv" class="btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" title="Download Experiment History (CSV)">
+              📄 Export CSV
+            </a>
+            <button class="btn-secondary" onclick="loadExperimentHistory()">
+              🔄 Refresh History
+            </button>
+          </div>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem;">
+          Saved runs stored in <code>data/experiments/{experiment_id}/</code> with <code>config.json</code>, <code>metrics.csv</code>, and <code>results.json</code>.
+        </p>
+
+        <div class="table-responsive">
+          <table class="data-table" id="table-exp-history">
+            <thead>
+              <tr>
+                <th>Experiment ID</th>
+                <th>Timestamp</th>
+                <th>Algorithm</th>
+                <th>Dataset</th>
+                <th>Clients</th>
+                <th>Rounds</th>
+                <th>Accuracy</th>
+                <th>Gender ΔDP</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-exp-history">
+              <tr>
+                <td colspan="9" style="text-align:center; color:#64748b; padding: 1.5rem;">
+                  Loading persisted experiments...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 7: Admin Panel -->
+    <div class="tab-pane" id="tab-admin">
+      <div class="card" style="border: 2px solid #a855f7; background: #ffffff;">
+        <div class="card-title">
+          <span style="color: #7c3aed; font-weight: 700;">Administrator Control Panel &amp; Governance Center</span>
+          <span class="badge" style="background: #f3e8ff; color: #7c3aed; border: 1px solid #d8b4fe;">
+            Server-Side RBAC
+          </span>
+        </div>
+
+        <div id="admin-login-box" style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem;">
+          <h4 style="color: #581c87; font-size: 0.95rem; margin-bottom: 0.4rem; font-weight: 600;">🔐 Enter Admin Passkey</h4>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+            Verified strictly server-side using constant-time comparison against the environment secret.
+          </p>
+          <div style="display: flex; gap: 0.5rem; max-width: 480px; flex-wrap: wrap;">
+            <input type="password" id="admin-panel-passkey" placeholder="Enter Admin Passkey..." style="flex: 1; min-width: 180px; padding: 0.5rem; border-radius: 6px; font-size: 0.88rem;" />
+            <button class="btn-primary" id="btn-admin-panel-login" style="background: linear-gradient(135deg, #7c3aed, #a855f7);">
+              Verify Admin
+            </button>
+          </div>
+          <div id="admin-panel-auth-msg" style="margin-top: 0.5rem; font-size: 0.82rem;"></div>
+        </div>
+
+        <div id="admin-actions-console" style="display: none;">
+          <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 1.25rem;">
+            <h4 style="color: #fb7185; font-size: 1rem; margin-bottom: 0.4rem;">
+              ⚠️ Global Results &amp; Model Reset Authority
+            </h4>
+            <p style="font-size: 0.82rem; color: #e2e8f0; margin-bottom: 0.85rem;">
+              Reinitialize global weights and clear communication history to round 0.
+            </p>
+            <button class="btn-reset" id="btn-admin-reset-results" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+              🔄 Reset Federated System to Clean State
+            </button>
+            <div id="admin-reset-status" style="margin-top: 0.5rem; font-size: 0.82rem; color: #94a3b8;"></div>
+          </div>
+
+          <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 1.25rem; margin-top: 1rem;">
+            <h4 style="color: #fb7185; font-size: 1rem; margin-bottom: 0.4rem;">
+              🗑️ Delete All Hospital Nodes (Admin Authority)
+            </h4>
+            <p style="font-size: 0.82rem; color: #475569; margin-bottom: 0.85rem;">
+              Remove all currently enrolled hospital nodes and on-premise patient silos from the federated network.
+            </p>
+            <button class="btn-reset" id="btn-admin-delete-all-hospitals" style="background: linear-gradient(135deg, #e11d48, #be123c);">
+              🗑️ Delete All Enrolled Hospitals
+            </button>
+            <div id="admin-delete-all-status" style="margin-top: 0.5rem; font-size: 0.82rem; color: #94a3b8;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    FedEquiMed: Fairness-Aware Federated Learning in Healthcare &bull; PhD Research Prototype
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

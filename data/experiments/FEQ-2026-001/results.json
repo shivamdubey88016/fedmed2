@@ -1,0 +1,124 @@
+{
+  "experiment_id": "FEQ-2026-001",
+  "timestamp": "2026-09-18T21:28:52.625564",
+  "algorithm": "FedAvg",
+  "seeds": [
+    42,
+    123
+  ],
+  "rounds": 2,
+  "metrics_summary": {
+    "accuracy": {
+      "mean": 0.719,
+      "std": 0.0
+    },
+    "f1": {
+      "mean": 0.6982,
+      "std": 0.0028
+    },
+    "auroc": {
+      "mean": 0.7949,
+      "std": 0.0135
+    },
+    "delta_dp": {
+      "mean": 0.0508,
+      "std": 0.0265
+    },
+    "delta_eo": {
+      "mean": 0.0546,
+      "std": 0.0123
+    },
+    "dir": {
+      "mean": 0.8991,
+      "std": 0.0489
+    }
+  },
+  "seed_runs": [
+    {
+      "algorithm": "FedAvg",
+      "seed": 42,
+      "rounds": 2,
+      "history": [
+        {
+          "round": 1,
+          "accuracy": 0.695,
+          "precision": 0.6591,
+          "recall": 0.6978,
+          "f1": 0.6779,
+          "auroc": 0.7796,
+          "delta_dp": 0.0988,
+          "delta_eo": 0.0946,
+          "dir": 0.8168,
+          "composite_disparity": 0.2636
+        },
+        {
+          "round": 2,
+          "accuracy": 0.719,
+          "precision": 0.6876,
+          "recall": 0.713,
+          "f1": 0.7001,
+          "auroc": 0.7853,
+          "delta_dp": 0.0696,
+          "delta_eo": 0.0633,
+          "dir": 0.8645,
+          "composite_disparity": 0.226
+        }
+      ],
+      "final_metrics": {
+        "round": 2,
+        "accuracy": 0.719,
+        "precision": 0.6876,
+        "recall": 0.713,
+        "f1": 0.7001,
+        "auroc": 0.7853,
+        "delta_dp": 0.0696,
+        "delta_eo": 0.0633,
+        "dir": 0.8645,
+        "composite_disparity": 0.226
+      }
+    },
+    {
+      "algorithm": "FedAvg",
+      "seed": 123,
+      "rounds": 2,
+      "history": [
+        {
+          "round": 1,
+          "accuracy": 0.703,
+          "precision": 0.6646,
+          "recall": 0.7096,
+          "f1": 0.6864,
+          "auroc": 0.7925,
+          "delta_dp": 0.0334,
+          "delta_eo": 0.0472,
+          "dir": 0.934,
+          "composite_disparity": 0.2581
+        },
+        {
+          "round": 2,
+          "accuracy": 0.719,
+          "precision": 0.6895,
+          "recall": 0.7031,
+          "f1": 0.6962,
+          "auroc": 0.8044,
+          "delta_dp": 0.0321,
+          "delta_eo": 0.0459,
+          "dir": 0.9336,
+          "composite_disparity": 0.2248
+        }
+      ],
+      "final_metrics": {
+        "round": 2,
+        "accuracy": 0.719,
+        "precision": 0.6895,
+        "recall": 0.7031,
+        "f1": 0.6962,
+        "auroc": 0.8044,
+        "delta_dp": 0.0321,
+        "delta_eo": 0.0459,
+        "dir": 0.9336,
+        "composite_disparity": 0.2248
+      }
+    }
+  ]
+}
