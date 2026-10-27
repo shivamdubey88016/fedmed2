@@ -818,9 +818,98 @@ with tab2:
                         f"ΔDP: `{h_m.get('fedavg_dpd', 0)*100:.2f}%`"
                     )
 
-            # Mini sample table
-            sample_df = pd.DataFrame(h_data["raw_records"][:4])
-            st.dataframe(sample_df[["gender", "age", "heart_rate", "glucose", "label"]], use_container_width=True)
+            # Full hospital patient records table
+            h_df = pd.DataFrame(h_data["raw_records"])
+            col_subset = ["gender", "age", "ethnicity", "heart_rate", "systolic_bp", "glucose", "creatinine", "oxygen_sat", "lactate", "comorbidity_score", "label"]
+            ordered_cols = [c for c in col_subset if c in h_df.columns] + [c for c in h_df.columns if c not in col_subset]
+            h_df = h_df[ordered_cols]
+
+            st.dataframe(h_df, height=300, use_container_width=True)
+            st.download_button(
+                label=f"💾 Download {hid.replace('_', ' ').title()} CSV ({total_p} records)",
+                data=h_df.to_csv(index=False).encode('utf-8'),
+                file_name=f"{hid}_records_{total_p}.csv",
+                mime="text/csv",
+                key=f"dl_card_{hid}",
+                use_container_width=True
+            )
+
+    st.markdown("---")
+    st.subheader("📋 Multi-Center Patient Records Explorer (All Data)")
+    st.markdown(
+        "Inspect, filter, and export the complete patient dataset across all hospital client nodes and holdout evaluation cohorts:"
+    )
+
+    # Compile all records into a single consolidated dataframe
+    all_combined_records = []
+    for hid_name, h_content in all_available_hospitals.items():
+        for rec in h_content["raw_records"]:
+            r_copy = dict(rec)
+            r_copy["hospital_source"] = hid_name.replace("_", " ").title()
+            all_combined_records.append(r_copy)
+
+    if global_test and "raw_records" in global_test:
+        for rec in global_test["raw_records"]:
+            r_copy = dict(rec)
+            r_copy["hospital_source"] = "Holdout Evaluation Cohort"
+            all_combined_records.append(r_copy)
+
+    df_master = pd.DataFrame(all_combined_records)
+    master_cols = ["hospital_source", "gender", "age", "ethnicity", "heart_rate", "systolic_bp", "glucose", "creatinine", "oxygen_sat", "lactate", "comorbidity_score", "label"]
+    master_cols = [c for c in master_cols if c in df_master.columns] + [c for c in df_master.columns if c not in master_cols]
+    df_master = df_master[master_cols]
+
+    # Filters
+    f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 1, 1, 1])
+    with f_col1:
+        source_opts = ["All Cohorts Combined"] + [hid.replace("_", " ").title() for hid in all_available_hospitals.keys()] + ["Holdout Evaluation Cohort"]
+        selected_source = st.selectbox("Select Cohort / Hospital:", source_opts)
+    with f_col2:
+        selected_gen = st.selectbox("Filter Gender:", ["All", "Female", "Male"])
+    with f_col3:
+        selected_out = st.selectbox("Filter Outcome:", ["All", "Survived (0)", "Mortality (1)"])
+    with f_col4:
+        age_min, age_max = int(df_master["age"].min()), int(df_master["age"].max())
+        selected_age = st.slider("Age Range:", age_min, age_max, (age_min, age_max))
+
+    # Apply filters
+    view_df = df_master.copy()
+    if selected_source != "All Cohorts Combined":
+        view_df = view_df[view_df["hospital_source"] == selected_source]
+    if selected_gen != "All":
+        view_df = view_df[view_df["gender"] == selected_gen]
+    if selected_out == "Survived (0)":
+        view_df = view_df[view_df["label"] == 0]
+    elif selected_out == "Mortality (1)":
+        view_df = view_df[view_df["label"] == 1]
+    view_df = view_df[(view_df["age"] >= selected_age[0]) & (view_df["age"] <= selected_age[1])]
+
+    # Summary metrics row
+    s_col1, s_col2, s_col3, s_col4 = st.columns(4)
+    with s_col1:
+        st.metric("Total Patients Displayed", f"{len(view_df):,} Records")
+    with s_col2:
+        fem_pct = (view_df["gender"] == "Female").mean() * 100 if len(view_df) > 0 else 0
+        st.metric("Female Representation", f"{fem_pct:.1f}%")
+    with s_col3:
+        mort_rate = (view_df["label"] == 1).mean() * 100 if len(view_df) > 0 else 0
+        st.metric("ICU Mortality Incidence", f"{mort_rate:.1f}%")
+    with s_col4:
+        avg_age = view_df["age"].mean() if len(view_df) > 0 else 0
+        st.metric("Average Patient Age", f"{avg_age:.1f} yrs")
+
+    # Display full table
+    st.dataframe(view_df, height=450, use_container_width=True)
+
+    # Consolidated download button
+    st.download_button(
+        label=f"📥 Download Filtered Cohort CSV ({len(view_df):,} records, {len(view_df.columns)} features)",
+        data=view_df.to_csv(index=False).encode('utf-8'),
+        file_name=f"fedequimed_{selected_source.lower().replace(' ', '_')}_{len(view_df)}_patients.csv",
+        mime="text/csv",
+        type="primary",
+        use_container_width=True
+    )
 
 # ----------------------------------------------------
 # TAB 3: Add Custom Hospital Data (NEW FEATURE)
