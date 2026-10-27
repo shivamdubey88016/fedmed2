@@ -138,6 +138,20 @@ seed = st.sidebar.number_input("Random Seed", value=42, step=1)
 
 run_button = st.sidebar.button("🚀 Run Federated Simulation", type="primary", use_container_width=True)
 
+# Direct Sidebar Download for PhD Research Report PDF
+pdf_report_path = "FedEquiMed_PhD_Research_Report.pdf"
+if os.path.exists(pdf_report_path):
+    with open(pdf_report_path, "rb") as f_pdf:
+        pdf_bytes = f_pdf.read()
+    st.sidebar.markdown("---")
+    st.sidebar.download_button(
+        label="📑 Download PhD Report (PDF)",
+        data=pdf_bytes,
+        file_name="FedEquiMed_PhD_Research_Report.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
+
 # Run or load simulation state respecting sim_mode
 if "last_sim_mode" not in st.session_state:
     st.session_state["last_sim_mode"] = sim_mode
@@ -759,6 +773,20 @@ with tab1:
             data=json_bytes,
             file_name="fedequimed_experiment_bundle.json",
             mime="application/json",
+            use_container_width=True
+        )
+
+    # 6. Prominent PhD Research Technical Report (PDF)
+    if os.path.exists("FedEquiMed_PhD_Research_Report.pdf"):
+        with open("FedEquiMed_PhD_Research_Report.pdf", "rb") as f_pdf:
+            pdf_bytes = f_pdf.read()
+        st.markdown("")
+        st.download_button(
+            label="📑 Download Complete PhD Research Technical Report (PDF with Embedded Figures & Analysis)",
+            data=pdf_bytes,
+            file_name="FedEquiMed_PhD_Research_Report.pdf",
+            mime="application/pdf",
+            type="primary",
             use_container_width=True
         )
 
